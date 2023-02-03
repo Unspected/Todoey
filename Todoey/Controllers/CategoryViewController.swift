@@ -13,20 +13,20 @@ var categories = [Category]()
 
 class CategoryViewController: UITableViewController {
     
-//    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    //    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     let cellID = "CategoryCell"
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         categories = DataManager.shared.categories()
-     
+        
     }
     
     //MARK: - New Categories
-
+    
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         
@@ -70,42 +70,75 @@ class CategoryViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//        let itemVC = ToDoListViewController(index: indexPath.row)
-        
-//        performSegue(withIdentifier: "goToItems", sender: self)
         performSegue(withIdentifier: "goToItems", sender: self)
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         let destionationVC = segue.destination as! ToDoListViewController
-
+        
         if let indexPath = self.tableView.indexPathForSelectedRow {
             destionationVC.category = categories[indexPath.row]
         }
     }
     
+    override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let editAction = UIContextualAction(style: .normal, title: "Edit") { [weak self] (action, view, completionHandler) in
+            self?.editSingerAction(indexPath: indexPath)
+            completionHandler(true)
+        }
+        
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completionHandler) in
+            self?.deleteSingerAction(indexPath: indexPath)
+            completionHandler(true)
+        }
+        
+        return UISwipeActionsConfiguration(actions: [editAction, deleteAction])
+    }
     
-    //MARK: - Data Manipulations Methods
     
-//    func saveCategories() {
-//        do {
-//            try context.save()
-//        } catch {
-//           print("Error saving Categories \(error)")
-//        }
-//        
-//        self.tableView.reloadData()
-//    }
-//    func loadCategories() {
-//  //      let fetchRequest = NSFetchRequest<Item>(entityName: "Item")
-//        let request : NSFetchRequest<Category> = Category.fetchRequest()
-//        do {
-//            categories = try context.fetch(request)
-//            // используйте результаты здесь
-//        } catch let error as NSError {
-//            print("Error loading categories \(error)")
-//        }
-//        tableView.reloadData()
-//    }
+    // MARK: - Manipulation Functions
+    private func editSingerAction(indexPath: IndexPath) {
+        let category = categories[indexPath.row]
+        var nameTextField = UITextField()
 
+        let alert = UIAlertController(title: "Edit Category", message: "", preferredStyle: .alert)
+        let editAction = UIAlertAction(title: "Edit", style: .default) { (action) in
+            guard let saveText = nameTextField.text else { return }
+            category.setValue(saveText, forKey: "name")
+            DataManager.shared.save()
+            self.tableView.reloadData()
+        }
+        
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Category Name"
+            alertTextField.text = category.name
+            nameTextField = alertTextField
+        }
+
+        let cancelAction = UIAlertAction(title: "Cancel", style: .destructive) { (action) in
+            self.dismiss(animated: true, completion: nil)
+        }
+        
+        alert.addAction(editAction)
+        alert.addAction(cancelAction)
+        present(alert, animated: true, completion: nil)
+    }
+    
+    private func deleteSingerAction(indexPath: IndexPath) {
+        let category = categories[indexPath.row]
+        let areYouSureAlert = UIAlertController(title: "Are you sure you want to delete this Category?", message: "", preferredStyle: .alert)
+        let yesDeleteAction = UIAlertAction(title: "Yes", style: .destructive) { [self] (action) in
+            DataManager.shared.deleteCategory(category: category)
+            categories.remove(at: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .fade)
+            tableView.reloadData()
+        }
+        let noDeleteAction = UIAlertAction(title: "No", style: .default) { (action) in
+            //do nothing
+        }
+        areYouSureAlert.addAction(noDeleteAction)
+        areYouSureAlert.addAction(yesDeleteAction)
+        self.present(areYouSureAlert, animated: true, completion: nil)
+    }
 }
+    
